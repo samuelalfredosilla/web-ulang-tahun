@@ -1,0 +1,20 @@
+PANDUAN MENAMBAHKAN LAGU SENDIRI
+================================
+
+Anda memiliki 2 cara mudah untuk mengganti lagu dengan lagu sendiri:
+
+CARA 1 (Paling Praktis via Web):
+1. Buka website kado ulang tahun di browser.
+2. Klik tombol "Kelola & Sesuaikan Kado" atau "Studio Kado".
+3. Geser ke bagian "5. Musik Piringan Hitam".
+4. Pilih sumber musik: "Lagu Sendiri".
+5. Klik tombol "Pilih File Lagu MP3 / WAV / M4A" dan pilih lagu dari komputer Anda.
+6. Klik "Simpan & Terapkan (Lokal)". Lagu Anda langsung aktif dan bisa diputar!
+
+CARA 2 (Taruh File di Folder Ini):
+1. Salin (copy) file lagu MP3 Anda ke dalam folder ini:
+   d:\Portofolio Web\web ulang tahun\public\music\
+   (Contoh: beri nama "lagu.mp3")
+2. Di website pada Studio Kado, masukkan tautan URL:
+   /music/lagu.mp3
+3. Klik "Simpan & Terapkan (Lokal)".

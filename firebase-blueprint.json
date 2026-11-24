@@ -1,0 +1,135 @@
+{
+  "entities": {
+    "BirthdayGift": {
+      "title": "BirthdayGift",
+      "description": "Interactive birthday gift configuration containing recipient details, hashed passcode, letter content, botanical affirmations, polaroid memories, and music settings.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique gift slug identifier",
+          "minLength": 2,
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the gift creator",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "recipientName": {
+          "type": "string",
+          "description": "Name of the birthday recipient",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "senderName": {
+          "type": "string",
+          "description": "Name of the gift sender",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "passcodeHash": {
+          "type": "string",
+          "description": "SHA-256 hex digest of the unlock passcode",
+          "minLength": 64,
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "passcodeHint": {
+          "type": "string",
+          "description": "Optional gentle clue for the recipient",
+          "minLength": 0,
+          "maxLength": 120
+        },
+        "envelopeTitle": {
+          "type": "string",
+          "description": "Headline displayed above the wax-sealed envelope",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "menuTitle": {
+          "type": "string",
+          "description": "Headline displayed on the main gift menu",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "letterTitle": {
+          "type": "string",
+          "description": "Greeting salutation on the letter page",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "letterBody": {
+          "type": "string",
+          "description": "Full birthday letter message",
+          "minLength": 1,
+          "maxLength": 3000
+        },
+        "flowerCompliments": {
+          "type": "array",
+          "description": "Up to 6 short uplifting notes revealed around the floral bouquet"
+        },
+        "memories": {
+          "type": "array",
+          "description": "Up to 6 polaroid memory items with caption, dateLabel, presetArt, and optional compressed imageData"
+        },
+        "musicTitle": {
+          "type": "string",
+          "description": "Title of the soundtrack shown by the vinyl player",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "musicSource": {
+          "type": "string",
+          "description": "Audio playback mode",
+          "enum": ["melody", "custom_url"]
+        },
+        "musicUrl": {
+          "type": "string",
+          "description": "Optional external MP3 URL when musicSource is custom_url",
+          "minLength": 0,
+          "maxLength": 500
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server last update timestamp"
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "recipientName",
+        "senderName",
+        "passcodeHash",
+        "passcodeHint",
+        "envelopeTitle",
+        "menuTitle",
+        "letterTitle",
+        "letterBody",
+        "flowerCompliments",
+        "memories",
+        "musicTitle",
+        "musicSource",
+        "musicUrl",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/gifts/{giftId}": {
+      "schema": {
+        "$ref": "#/entities/BirthdayGift"
+      },
+      "description": "Personalized interactive birthday gift documents owned by creators and opened by recipients using the gift ID and passcode."
+    }
+  }
+}

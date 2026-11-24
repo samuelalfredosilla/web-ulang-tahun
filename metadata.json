@@ -1,0 +1,6 @@
+{
+  "name": "Kado Ulang Tahun Interaktif",
+  "description": "Website kado ulang tahun interaktif dengan amplop segel lilin, surat ucapan, buket bunga, galeri polaroid, dan pemutar musik piringan hitam yang terhubung ke Firebase.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
