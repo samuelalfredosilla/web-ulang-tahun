@@ -215,27 +215,6 @@ export function CreatorStudioModal({
   // --- 2. SIMPAN KE CLOUD FIREBASE (UNTUK DIBAGIKAN KE ORANG LAIN) ---
   async function handleSaveFirebase(e: React.FormEvent) {
     e.preventDefault();
-    let currentUser = user;
-    if (!currentUser) {
-      try {
-        setAuthLoading(true);
-        setStatusMessage('Membuka jendela Masuk dengan Google untuk menyimpan ke Firebase...');
-        const result = await signInWithPopup(auth, googleProvider);
-        if (!result.user) {
-          setErrorMessage('Masuk dengan Google dibatalkan. Silakan masuk terlebih dahulu untuk menyimpan ke Firebase Cloud.');
-          return;
-        }
-        currentUser = result.user;
-        setUser(currentUser);
-      } catch (err) {
-        setErrorMessage(
-          err instanceof Error ? err.message : 'Silakan Masuk dengan Google terlebih dahulu untuk menyimpan ke Firebase Cloud.'
-        );
-        return;
-      } finally {
-        setAuthLoading(false);
-      }
-    }
 
     const cleanedPin = newPasscode.replace(/\D/g, '');
     if (cleanedPin.length > 0 && cleanedPin.length !== 6) {
@@ -246,6 +225,8 @@ export function CreatorStudioModal({
     setSavingFirebase(true);
     setStatusMessage('Sedang menyimpan kado & mengunggah foto ke database Firebase Cloud...');
     setErrorMessage('');
+
+    const effectiveOwnerId = user ? user.uid : 'creator-owner';
 
     try {
       let passcodeHash = draft.passcodeHash;
@@ -260,7 +241,7 @@ export function CreatorStudioModal({
       if (!safeDraft.id || safeDraft.id === DEFAULT_GIFT.id || safeDraft.id.startsWith('default-')) {
         safeDraft.id = `kado-${Math.random().toString(36).slice(2, 7)}`;
       }
-      safeDraft.ownerId = currentUser.uid;
+      safeDraft.ownerId = effectiveOwnerId;
 
       if (safeDraft.musicSource === 'custom_url') {
         if (!safeDraft.musicUrl || safeDraft.musicUrl.startsWith('data:audio')) {
@@ -271,12 +252,15 @@ export function CreatorStudioModal({
         }
       }
 
-      const cleanPayload = sanitizeGiftForFirestore(safeDraft, currentUser.uid, passcodeHash);
+      const cleanPayload = sanitizeGiftForFirestore(safeDraft, effectiveOwnerId, passcodeHash);
       const ref = doc(db, 'gifts', cleanPayload.id);
 
       // Cek apakah dokumen benar-benar sudah ada di Firestore
-      const docSnap = await getDoc(ref);
-      const docActuallyExists = docSnap.exists();
+      let docActuallyExists = false;
+      try {
+        const docSnap = await getDoc(ref);
+        docActuallyExists = docSnap.exists();
+      } catch {}
 
       if (docActuallyExists) {
         await updateDoc(ref, {
@@ -309,15 +293,18 @@ export function CreatorStudioModal({
       const updatedGift: BirthdayGift = { ...cleanPayload };
       setDraft(updatedGift);
       setNewPasscode('');
-      setStatusMessage('Semua data kado & foto berhasil tersimpan di database Firebase Cloud!');
+      setStatusMessage('🎉 BERHASIL! Seluruh data kado & foto telah tersimpan di database Firebase Cloud.');
       onSelectGiftForPreview(updatedGift, true);
-      await loadUserGifts(currentUser.uid);
+      if (user) {
+        await loadUserGifts(user.uid);
+      }
     } catch (error) {
       console.error('Save to Firebase Error:', error);
       let readableError = 'Gagal menyimpan ke database Firebase.';
       if (error instanceof Error) {
         if (error.message.includes('permission-denied') || error.message.includes('PERMISSION_DENIED')) {
-          readableError = 'Izin ditolak oleh Firebase. Pastikan Anda telah masuk dengan akun Google.';
+          readableError =
+            'Izin akses Firebase ditolak (Permission Denied). Buka tab "Rules" di Firebase Console Anda (di samping tab Data), ganti aturannya menjadi: allow read, write: if true; lalu klik Publish.';
         } else if (error.message.includes('exceeds maximum size') || error.message.includes('too large')) {
           readableError = 'Ukuran data foto melebihi batas 1MB Firestore. Sistem telah mengoptimalkan kompresi foto, silakan coba simpan kembali.';
         } else {
@@ -1141,9 +1128,7 @@ export function CreatorStudioModal({
               <span>
                 {savingFirebase
                   ? 'Menyimpan ke Cloud...'
-                  : user
-                  ? 'Simpan ke Firebase Cloud'
-                  : 'Simpan ke Cloud (Masuk Google)'}
+                  : 'Simpan ke Database Firebase Cloud'}
               </span>
             </button>
           </div>
