@@ -8,8 +8,8 @@ export async function sha256Hex(input: string): Promise<string> {
 
 export async function compressImageToDataUrl(
   file: File,
-  maxDimension = 400,
-  quality = 0.68
+  maxDimension = 320,
+  quality = 0.62
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -33,12 +33,12 @@ export async function compressImageToDataUrl(
         ctx.drawImage(img, 0, 0, width, height);
 
         let result = canvas.toDataURL('image/jpeg', quality);
-        // If still exceeds 120KB, compress further to protect Firestore document size
-        if (result.length > 120000) {
-          result = canvas.toDataURL('image/jpeg', 0.5);
+        // Pastikan ukuran per foto < 50KB agar total dokumen Firestore (hingga 10 foto) tetap aman di bawah 1MB
+        if (result.length > 45000) {
+          result = canvas.toDataURL('image/jpeg', 0.50);
         }
-        if (result.length > 150000) {
-          result = canvas.toDataURL('image/jpeg', 0.38);
+        if (result.length > 60000) {
+          result = canvas.toDataURL('image/jpeg', 0.36);
         }
         resolve(result);
       };

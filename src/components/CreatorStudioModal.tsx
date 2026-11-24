@@ -9,6 +9,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   getDocs,
   query,
   serverTimestamp,
@@ -214,9 +215,26 @@ export function CreatorStudioModal({
   // --- 2. SIMPAN KE CLOUD FIREBASE (UNTUK DIBAGIKAN KE ORANG LAIN) ---
   async function handleSaveFirebase(e: React.FormEvent) {
     e.preventDefault();
-    if (!user) {
-      setErrorMessage('Silakan Masuk dengan Google terlebih dahulu untuk menyimpan ke Firebase Cloud.');
-      return;
+    let currentUser = user;
+    if (!currentUser) {
+      try {
+        setAuthLoading(true);
+        setStatusMessage('Membuka jendela Masuk dengan Google untuk menyimpan ke Firebase...');
+        const result = await signInWithPopup(auth, googleProvider);
+        if (!result.user) {
+          setErrorMessage('Masuk dengan Google dibatalkan. Silakan masuk terlebih dahulu untuk menyimpan ke Firebase Cloud.');
+          return;
+        }
+        currentUser = result.user;
+        setUser(currentUser);
+      } catch (err) {
+        setErrorMessage(
+          err instanceof Error ? err.message : 'Silakan Masuk dengan Google terlebih dahulu untuk menyimpan ke Firebase Cloud.'
+        );
+        return;
+      } finally {
+        setAuthLoading(false);
+      }
     }
 
     const cleanedPin = newPasscode.replace(/\D/g, '');
@@ -226,7 +244,7 @@ export function CreatorStudioModal({
     }
 
     setSavingFirebase(true);
-    setStatusMessage('');
+    setStatusMessage('Sedang menyimpan kado & mengunggah foto ke database Firebase Cloud...');
     setErrorMessage('');
 
     try {
@@ -237,9 +255,13 @@ export function CreatorStudioModal({
         passcodeHash = await sha256Hex(DEFAULT_PASSCODE);
       }
 
-      // Pastikan payload musik aman untuk Firebase (Firestore membatasi ukuran dokumen 1MB & url <= 500 karakter).
-      // Jika user mengunggah base64 besar, kita gunakan file lokal yang sudah siap di /music/lany-soft.mp3
+      // Pastikan payload aman untuk Firebase
       let safeDraft = { ...draft };
+      if (!safeDraft.id || safeDraft.id === DEFAULT_GIFT.id || safeDraft.id.startsWith('default-')) {
+        safeDraft.id = `kado-${Math.random().toString(36).slice(2, 7)}`;
+      }
+      safeDraft.ownerId = currentUser.uid;
+
       if (safeDraft.musicSource === 'custom_url') {
         if (!safeDraft.musicUrl || safeDraft.musicUrl.startsWith('data:audio')) {
           safeDraft.musicUrl = '/music/lany-soft.mp3';
@@ -249,10 +271,14 @@ export function CreatorStudioModal({
         }
       }
 
-      const cleanPayload = sanitizeGiftForFirestore(safeDraft, user.uid, passcodeHash);
+      const cleanPayload = sanitizeGiftForFirestore(safeDraft, currentUser.uid, passcodeHash);
       const ref = doc(db, 'gifts', cleanPayload.id);
 
-      if (isExistingDoc) {
+      // Cek apakah dokumen benar-benar sudah ada di Firestore
+      const docSnap = await getDoc(ref);
+      const docActuallyExists = docSnap.exists();
+
+      if (docActuallyExists) {
         await updateDoc(ref, {
           recipientName: cleanPayload.recipientName,
           senderName: cleanPayload.senderName,
@@ -283,15 +309,22 @@ export function CreatorStudioModal({
       const updatedGift: BirthdayGift = { ...cleanPayload };
       setDraft(updatedGift);
       setNewPasscode('');
-      setStatusMessage('Kado berhasil disimpan ke Firebase Cloud!');
+      setStatusMessage('Semua data kado & foto berhasil tersimpan di database Firebase Cloud!');
       onSelectGiftForPreview(updatedGift, true);
-      await loadUserGifts(user.uid);
+      await loadUserGifts(currentUser.uid);
     } catch (error) {
-      handleFirestoreError(
-        error,
-        isExistingDoc ? OperationType.UPDATE : OperationType.CREATE,
-        `gifts/${draft.id}`
-      );
+      console.error('Save to Firebase Error:', error);
+      let readableError = 'Gagal menyimpan ke database Firebase.';
+      if (error instanceof Error) {
+        if (error.message.includes('permission-denied') || error.message.includes('PERMISSION_DENIED')) {
+          readableError = 'Izin ditolak oleh Firebase. Pastikan Anda telah masuk dengan akun Google.';
+        } else if (error.message.includes('exceeds maximum size') || error.message.includes('too large')) {
+          readableError = 'Ukuran data foto melebihi batas 1MB Firestore. Sistem telah mengoptimalkan kompresi foto, silakan coba simpan kembali.';
+        } else {
+          readableError = `Gagal menyimpan ke Firebase: ${error.message}`;
+        }
+      }
+      setErrorMessage(readableError);
     } finally {
       setSavingFirebase(false);
     }
@@ -360,9 +393,11 @@ export function CreatorStudioModal({
   async function handleUploadMemoryPhoto(index: number, file?: File) {
     if (!file) return;
     try {
+      setStatusMessage(`Sedang mengompres & memproses foto kenangan #${index + 1}...`);
       const compressed = await compressImageToDataUrl(file);
       updateMemory(index, { presetArt: 'custom', imageData: compressed });
-      setStatusMessage(`Foto kenangan #${index + 1} berhasil diunggah.`);
+      setStatusMessage(`Foto kenangan #${index + 1} berhasil dimuat (${Math.round(compressed.length / 1024)} KB). Klik "Simpan ke Firebase Cloud" di bawah untuk mengunggah ke database.`);
+      setErrorMessage('');
     } catch (error) {
       setErrorMessage(
         error instanceof Error ? error.message : 'Gagal memproses foto kenangan.'
@@ -399,13 +434,15 @@ export function CreatorStudioModal({
   async function handleUploadMessagePhoto(index: number, file?: File) {
     if (!file) return;
     try {
+      setStatusMessage(`Sedang mengompres & memproses foto surat #${index + 1}...`);
       const compressed = await compressImageToDataUrl(file);
       setDraft((prev) => {
         const nextPhotos = [...(prev.messagePhotos || [])];
         nextPhotos[index] = compressed;
         return { ...prev, messagePhotos: nextPhotos };
       });
-      setStatusMessage(`Foto surat polaroid #${index + 1} berhasil diunggah.`);
+      setStatusMessage(`Foto surat polaroid #${index + 1} berhasil dimuat (${Math.round(compressed.length / 1024)} KB). Klik "Simpan ke Firebase Cloud" di bawah untuk mengunggah ke database.`);
+      setErrorMessage('');
     } catch (error) {
       setErrorMessage(
         error instanceof Error ? error.message : 'Gagal memproses foto surat.'

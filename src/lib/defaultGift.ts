@@ -86,9 +86,11 @@ export function sanitizeGiftForFirestore(
     .map((item, idx) => ({
       id: (item.id || `mem-${idx + 1}`).replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 64),
       caption: (item.caption.trim() || `Kenangan ${idx + 1}`).slice(0, 120),
-      dateLabel: item.dateLabel.trim().slice(0, 40),
-      presetArt: item.presetArt,
-      imageData: item.presetArt === 'custom' ? item.imageData.slice(0, 180000) : '',
+      dateLabel: (item.dateLabel || '').trim().slice(0, 40),
+      presetArt: ['cake', 'sunset', 'coffee', 'stars', 'custom'].includes(item.presetArt)
+        ? item.presetArt
+        : 'custom',
+      imageData: (item.imageData || '').slice(0, 75000),
     }));
 
   const safeMemories = cleanMemories.length > 0 ? cleanMemories : DEFAULT_MEMORIES.slice(0, 1);
@@ -106,7 +108,7 @@ export function sanitizeGiftForFirestore(
     letterBody: (gift.letterBody.trim() || 'Happy Birthday!').slice(0, 3000),
     flowerCompliments: safeCompliments,
     memories: safeMemories,
-    musicTitle: (gift.musicTitle.trim() || 'Birthday Music Box').slice(0, 100),
+    musicTitle: (gift.musicTitle.trim() || 'LANY - Soft').slice(0, 100),
     musicSource:
       gift.musicSource === 'custom_url' && (gift.musicUrl || '').trim()
         ? 'custom_url'
@@ -115,6 +117,8 @@ export function sanitizeGiftForFirestore(
       gift.musicSource === 'custom_url'
         ? (gift.musicUrl || '').trim().slice(0, 500)
         : '',
-    messagePhotos: (gift.messagePhotos || []).slice(0, 4),
+    messagePhotos: (gift.messagePhotos || [])
+      .slice(0, 4)
+      .map((p) => (p || '').slice(0, 75000)),
   };
 }
